@@ -4,7 +4,7 @@
              x:Class="WmsPda.Views.LoginPage"
              Title=""
              BackgroundColor="#F5F7FA"
-             Shell.NavBarIsVisible="False">
+             NavigationPage.HasNavigationBar="False">
 
     <ScrollView>
         <VerticalStackLayout Padding="28,60,28,28" Spacing="0">
