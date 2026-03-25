@@ -1,0 +1,144 @@
+@page "/dashboard"
+
+<PageTitle>仪表盘 - WMS 系统</PageTitle>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">仓库管理仪表盘</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="/">首页</a></li>
+        <li class="breadcrumb-item active">仪表盘</li>
+    </ol>
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                商品总数
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">1,248</div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                <span class="text-success mr-2"><i class="bi bi-arrow-up"></i> 3.48%</span>
+                                本月新增 42 个
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-boxes fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                今日入库
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">156</div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                共 3 个采购单
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-arrow-down-left fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                今日出库
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">89</div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                共 5 个销售单
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-arrow-up-right fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                低库存预警
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">23</div>
+                            <div class="mt-2 mb-0 text-muted text-xs">
+                                <span class="text-danger mr-2"><i class="bi bi-exclamation-triangle"></i> 需补货</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-exclamation-circle fs-2 text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">本月出入库趋势</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area" style="height: 300px;">
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-bar-chart-line fs-1"></i>
+                            <p class="mt-3">图表组件待实现</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">快速操作</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a class="btn btn-primary" href="/warehouse">
+                            <i class="bi bi-buildings me-2"></i> 仓库管理
+                        </a>
+                        <a class="btn btn-success" href="/inbound">
+                            <i class="bi bi-arrow-down-left me-2"></i> 入库管理
+                        </a>
+                        <a class="btn btn-warning" href="/outbound">
+                            <i class="bi bi-arrow-up-right me-2"></i> 出库管理
+                        </a>
+                        <a class="btn btn-info" href="/inventory">
+                            <i class="bi bi-clipboard-data me-2"></i> 库存查询
+                        </a>
+                    </div>
+                    <hr />
+                    <div class="text-center mt-3">
+                        <small class="text-muted">WMS 系统开发中，更多功能即将上线</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

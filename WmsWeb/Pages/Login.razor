@@ -1,0 +1,91 @@
+@page "/login"
+@using WmsWeb.Database
+@inject DatabaseHelper Db
+@inject NavigationManager Navigation
+
+<PageTitle>登录 - WMS 系统</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">用户登录</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="username" @bind="Username" placeholder="请输入用户名" />
+                    </div>
+                    <div class="mb-4">
+                        <label for="password" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="password" @bind="Password" placeholder="请输入密码" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Message))
+                    {
+                        <div class="alert @(IsSuccess ? @"alert-success" : @"alert-danger") mb-3">
+                            @Message
+                        </div>
+                    }
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" @onclick="HandleLogin" disabled="@IsLoading">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            登录
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="GoToRegister">
+                            没有账号？去注册
+                        </button>
+                    </div>
+                </div>
+                <div class="card-footer text-center text-muted small">
+                    WMS 仓库管理系统 v1.0
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string Username { get; set; } = "";
+    private string Password { get; set; } = "";
+    private string Message { get; set; } = "";
+    private bool IsSuccess { get; set; } = false;
+    private bool IsLoading { get; set; } = false;
+
+    private void GoToRegister()
+    {
+        Navigation.NavigateTo("/register");
+    }
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+        {
+            Message = "用户名和密码不能为空";
+            IsSuccess = false;
+            return;
+        }
+
+        IsLoading = true;
+
+        // 模拟异步操作
+        await Task.Delay(300);
+
+        var (success, msg) = Db.Login(Username, Password);
+        IsSuccess = success;
+        Message = msg;
+
+        IsLoading = false;
+
+        if (success)
+        {
+            await Task.Delay(800);
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+}

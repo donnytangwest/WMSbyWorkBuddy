@@ -1,0 +1,47 @@
+## .NET / C# Build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.cache
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.assets.json
+
+## .NET MAUI / Android
+*.apk
+*.aab
+!WmsPda/bin/Release/net10.0-android/publish/com.wms.pda-Signed.apk
+
+## Blazor WASM
+wwwroot/_framework/
+
+## Test results
+TestResults/
+*.trx
+*.xml
+coverage/
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+
+## WorkBuddy internal
+.workbuddy/
+.codebuddy/
