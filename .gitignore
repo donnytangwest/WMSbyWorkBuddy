@@ -14,8 +14,13 @@ project.lock.json
 project.assets.json
 
 ## .NET MAUI / Android
-*.apk
+# 排除所有 apk/aab，但保留已签名的发布 APK
 *.aab
+*.apk
+!WmsPda/bin/
+!WmsPda/bin/Release/
+!WmsPda/bin/Release/net10.0-android/
+!WmsPda/bin/Release/net10.0-android/publish/
 !WmsPda/bin/Release/net10.0-android/publish/com.wms.pda-Signed.apk
 
 ## Blazor WASM
