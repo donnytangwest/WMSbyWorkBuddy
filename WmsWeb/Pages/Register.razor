@@ -1,114 +1,93 @@
 @page "/register"
-@using WmsWeb.Database
+@layout AuthLayout
+@using WmsCore.Database
+@using WmsWeb.Layout
 @inject DatabaseHelper Db
 @inject NavigationManager Navigation
 
 <PageTitle>注册 - WMS 系统</PageTitle>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow">
-                <div class="card-header bg-info text-white text-center">
-                    <h4 class="mb-0">新用户注册</h4>
+<div style="width:100%; max-width:480px; padding:0 16px;">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-info rounded-3 mb-3"
+                     style="width:64px;height:64px;">
+                    <i class="bi bi-person-plus text-white fs-2"></i>
                 </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="regUsername" class="form-label">用户名 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="regUsername" @bind="Username" 
-                                   placeholder="至少 3 个字符" />
-                            <div class="form-text">用于登录的账号，不可重复</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="email" class="form-label">邮箱</label>
-                            <input type="email" class="form-control" id="email" @bind="Email" 
-                                   placeholder="可选，用于接收通知" />
-                        </div>
-                        <div class="col-md-6">
-                            <label for="regPassword" class="form-label">密码 <span class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="regPassword" @bind="Password" 
-                                   placeholder="至少 6 个字符" />
-                        </div>
-                        <div class="col-md-6">
-                            <label for="confirmPassword" class="form-label">确认密码 <span class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="confirmPassword" @bind="ConfirmPassword" 
-                                   placeholder="再次输入密码" />
-                        </div>
-                    </div>
+                <h4 class="fw-bold mb-1">新用户注册</h4>
+                <p class="text-muted small">填写信息创建账号</p>
+            </div>
 
-                    @if (!string.IsNullOrEmpty(Message))
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">用户名 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" @bind="Username" placeholder="至少 3 个字符" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">邮箱</label>
+                    <input type="email" class="form-control" @bind="Email" placeholder="可选" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">密码 <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control" @bind="Password" placeholder="至少 6 个字符" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">确认密码 <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control" @bind="ConfirmPassword" placeholder="再次输入密码" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="alert @(IsSuccess ? "alert-success" : "alert-danger") py-2 mt-3">
+                    <i class="bi bi-@(IsSuccess ? "check-circle" : "exclamation-circle") me-2"></i>@Message
+                </div>
+            }
+
+            <div class="d-grid gap-2 mt-4">
+                <button class="btn btn-info btn-lg text-white" @onclick="HandleRegister" disabled="@IsLoading">
+                    @if (IsLoading)
                     {
-                        <div class="alert @(IsSuccess ? @"alert-success" : @"alert-danger") mt-4">
-                            @Message
-                        </div>
+                        <span class="spinner-border spinner-border-sm me-2"></span>
                     }
-
-                    <div class="d-grid gap-2 mt-4">
-                        <button class="btn btn-info" @onclick="HandleRegister" disabled="@IsLoading">
-                            @if (IsLoading)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                            }
-                            提交注册
-                        </button>
-                        <button class="btn btn-outline-secondary" @onclick="GoToLogin">
-                            已有账号？返回登录
-                        </button>
-                    </div>
-                </div>
-                <div class="card-footer text-center text-muted small">
-                    注册成功后即可使用 WMS 系统全部功能
-                </div>
+                    提交注册
+                </button>
+                <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/login")'>
+                    已有账号？返回登录
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 @code {
-    private string Username { get; set; } = "";
-    private string Password { get; set; } = "";
+    private string Username        { get; set; } = "";
+    private string Password        { get; set; } = "";
     private string ConfirmPassword { get; set; } = "";
-    private string Email { get; set; } = "";
-    private string Message { get; set; } = "";
-    private bool IsSuccess { get; set; } = false;
-    private bool IsLoading { get; set; } = false;
-
-    private void GoToLogin()
-    {
-        Navigation.NavigateTo("/login");
-    }
+    private string Email           { get; set; } = "";
+    private string Message         { get; set; } = "";
+    private bool   IsSuccess       { get; set; } = false;
+    private bool   IsLoading       { get; set; } = false;
 
     private async Task HandleRegister()
     {
         if (string.IsNullOrWhiteSpace(Username) || Username.Length < 3)
-        {
-            Message = "用户名至少需要 3 个字符";
-            IsSuccess = false;
-            return;
-        }
+        { Message = "用户名至少需要 3 个字符"; IsSuccess = false; return; }
 
         if (string.IsNullOrWhiteSpace(Password) || Password.Length < 6)
-        {
-            Message = "密码至少需要 6 个字符";
-            IsSuccess = false;
-            return;
-        }
+        { Message = "密码至少需要 6 个字符"; IsSuccess = false; return; }
 
         if (Password != ConfirmPassword)
-        {
-            Message = "两次输入的密码不一致";
-            IsSuccess = false;
-            return;
-        }
+        { Message = "两次输入的密码不一致"; IsSuccess = false; return; }
 
         IsLoading = true;
-        await Task.Delay(400);
+        Message = "";
+        await Task.Delay(300);
 
         var (success, msg) = Db.Register(Username, Password, Email);
         IsSuccess = success;
         Message = msg;
-
         IsLoading = false;
 
         if (success)

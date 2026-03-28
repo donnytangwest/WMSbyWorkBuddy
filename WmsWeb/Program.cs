@@ -1,12 +1,27 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using WmsWeb;
+using WmsCore.Database;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
+var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-builder.Services.AddScoped<WmsWeb.Database.DatabaseHelper>();
+// 添加 Blazor Server 服务
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
 
-await builder.Build().RunAsync();
+// 注册数据库（单例，SQLite 文件存在服务端）
+var dbPath = Path.Combine(AppContext.BaseDirectory, "wms.db");
+builder.Services.AddSingleton<DatabaseHelper>(_ => new DatabaseHelper(dbPath));
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+
+app.UseStaticFiles();
+app.UseRouting();
+
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
+
+app.Run();
