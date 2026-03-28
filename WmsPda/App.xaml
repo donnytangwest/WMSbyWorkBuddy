@@ -1,56 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:converters="clr-namespace:WmsPda.Converters"
              x:Class="WmsPda.App">
     <Application.Resources>
         <ResourceDictionary>
-            <!-- Converters -->
-            <converters:StringNotEmptyConverter x:Key="StringNotEmptyConverter" />
-            <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
-            <converters:LoadingTextConverter x:Key="LoadingTextConverter" />
             <!-- 主色调 -->
             <Color x:Key="Primary">#1565C0</Color>
             <Color x:Key="PrimaryDark">#0D47A1</Color>
-            <Color x:Key="PrimaryLight">#E3F2FD</Color>
-            <Color x:Key="Accent">#FF6F00</Color>
             <Color x:Key="ErrorColor">#C62828</Color>
             <Color x:Key="SuccessColor">#2E7D32</Color>
-
-            <!-- PDA 专用：大号按钮样式（易于触控） -->
-            <Style x:Key="PdaButton" TargetType="Button">
-                <Setter Property="HeightRequest" Value="56" />
-                <Setter Property="FontSize" Value="18" />
-                <Setter Property="FontAttributes" Value="Bold" />
-                <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
-                <Setter Property="TextColor" Value="White" />
-            </Style>
-
-            <!-- 次要按钮 -->
-            <Style x:Key="PdaButtonSecondary" TargetType="Button">
-                <Setter Property="HeightRequest" Value="48" />
-                <Setter Property="FontSize" Value="16" />
-                <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="BackgroundColor" Value="Transparent" />
-                <Setter Property="TextColor" Value="{StaticResource Primary}" />
-                <Setter Property="BorderColor" Value="{StaticResource Primary}" />
-                <Setter Property="BorderWidth" Value="1.5" />
-            </Style>
-
-            <!-- 输入框 -->
-            <Style x:Key="PdaEntry" TargetType="Entry">
-                <Setter Property="HeightRequest" Value="52" />
-                <Setter Property="FontSize" Value="18" />
-                <Setter Property="BackgroundColor" Value="White" />
-            </Style>
-
-            <!-- 标签 -->
-            <Style x:Key="FieldLabel" TargetType="Label">
-                <Setter Property="FontSize" Value="14" />
-                <Setter Property="TextColor" Value="#555555" />
-                <Setter Property="Margin" Value="0,0,0,4" />
-            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

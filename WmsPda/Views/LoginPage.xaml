@@ -3,31 +3,28 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="WmsPda.Views.LoginPage"
              Title=""
-             BackgroundColor="#F5F7FA"
-             NavigationPage.HasNavigationBar="False">
+             BackgroundColor="#F0F4F8">
 
     <ScrollView>
-        <VerticalStackLayout Padding="28,60,28,28" Spacing="0">
+        <VerticalStackLayout Padding="24,60,24,24" Spacing="20">
 
             <!-- Logo 区域 -->
-            <VerticalStackLayout HorizontalOptions="Center" Spacing="8" Margin="0,0,0,48">
-                <Frame BackgroundColor="{StaticResource Primary}"
-                       CornerRadius="20"
-                       HeightRequest="80" WidthRequest="80"
-                       HorizontalOptions="Center"
-                       Padding="0"
-                       HasShadow="True">
+            <VerticalStackLayout HorizontalOptions="Center" Spacing="8" Margin="0,0,0,32">
+                <Border BackgroundColor="#1565C0"
+                        StrokeShape="RoundRectangle 16"
+                        HeightRequest="80" WidthRequest="80"
+                        HorizontalOptions="Center">
                     <Label Text="WMS"
                            FontSize="22"
                            FontAttributes="Bold"
                            TextColor="White"
                            HorizontalOptions="Center"
                            VerticalOptions="Center" />
-                </Frame>
+                </Border>
                 <Label Text="仓库管理系统"
                        FontSize="22"
                        FontAttributes="Bold"
-                       TextColor="{StaticResource Primary}"
+                       TextColor="#1565C0"
                        HorizontalOptions="Center" />
                 <Label Text="PDA 移动终端"
                        FontSize="14"
@@ -35,74 +32,79 @@
                        HorizontalOptions="Center" />
             </VerticalStackLayout>
 
-            <!-- 表单卡片 -->
-            <Frame BackgroundColor="White"
-                   CornerRadius="12"
-                   HasShadow="True"
-                   Padding="24,28">
-                <VerticalStackLayout Spacing="20">
+            <!-- 表单区域 -->
+            <VerticalStackLayout Spacing="16" Padding="0">
 
-                    <!-- 用户名 -->
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="用户名" Style="{StaticResource FieldLabel}" />
-                        <Border Stroke="#DDDDDD" StrokeThickness="1.5" StrokeShape="RoundRectangle 8">
-                            <Entry Placeholder="请输入用户名"
-                                   Text="{Binding Username}"
-                                   Style="{StaticResource PdaEntry}"
-                                   ReturnType="Next"
-                                   Margin="12,0" />
-                        </Border>
-                    </VerticalStackLayout>
+                <!-- 用户名 -->
+                <Label Text="用户名"
+                       FontSize="14"
+                       TextColor="#555555" />
+                <Border Stroke="#CCCCCC"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 8"
+                        BackgroundColor="White">
+                    <Entry Placeholder="请输入用户名"
+                           Text="{Binding Username}"
+                           FontSize="18"
+                           HeightRequest="52"
+                           Margin="12,0"
+                           ReturnType="Next" />
+                </Border>
 
-                    <!-- 密码 -->
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="密码" Style="{StaticResource FieldLabel}" />
-                        <Border Stroke="#DDDDDD" StrokeThickness="1.5" StrokeShape="RoundRectangle 8">
-                            <Entry Placeholder="请输入密码"
-                                   Text="{Binding Password}"
-                                   IsPassword="True"
-                                   Style="{StaticResource PdaEntry}"
-                                   ReturnType="Done"
-                                   ReturnCommand="{Binding LoginCommand}"
-                                   Margin="12,0" />
-                        </Border>
-                    </VerticalStackLayout>
+                <!-- 密码 -->
+                <Label Text="密码"
+                       FontSize="14"
+                       TextColor="#555555" />
+                <Border Stroke="#CCCCCC"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 8"
+                        BackgroundColor="White">
+                    <Entry Placeholder="请输入密码"
+                           Text="{Binding Password}"
+                           IsPassword="True"
+                           FontSize="18"
+                           HeightRequest="52"
+                           Margin="12,0"
+                           ReturnType="Done" />
+                </Border>
 
-                    <!-- 提示信息 -->
-                    <Label Text="{Binding Message}"
-                           IsVisible="{Binding Message, Converter={x:StaticResource StringNotEmptyConverter}}"
-                           FontSize="14"
-                           HorizontalOptions="Center">
-                        <Label.Triggers>
-                            <DataTrigger TargetType="Label" Binding="{Binding IsError}" Value="True">
-                                <Setter Property="TextColor" Value="{StaticResource ErrorColor}" />
-                            </DataTrigger>
-                            <DataTrigger TargetType="Label" Binding="{Binding IsError}" Value="False">
-                                <Setter Property="TextColor" Value="{StaticResource SuccessColor}" />
-                            </DataTrigger>
-                        </Label.Triggers>
-                    </Label>
+                <!-- 提示信息 -->
+                <Label Text="{Binding Message}"
+                       FontSize="14"
+                       TextColor="{Binding MessageColor}"
+                       HorizontalOptions="Center"
+                       IsVisible="{Binding HasMessage}" />
 
-                    <!-- 登录按钮 -->
-                    <Button Text="{Binding IsLoading, Converter={x:StaticResource LoadingTextConverter}, ConverterParameter='登录中...|登录'}"
-                            Command="{Binding LoginCommand}"
-                            IsEnabled="{Binding IsLoading, Converter={x:StaticResource InverseBoolConverter}}"
-                            Style="{StaticResource PdaButton}" />
+                <!-- 登录按钮 -->
+                <Button Text="{Binding LoginButtonText}"
+                        Command="{Binding LoginCommand}"
+                        IsEnabled="{Binding IsNotLoading}"
+                        BackgroundColor="#1565C0"
+                        TextColor="White"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        HeightRequest="56"
+                        CornerRadius="8" />
 
-                    <!-- 注册入口 -->
-                    <Button Text="没有账号？点此注册"
-                            Command="{Binding GoToRegisterCommand}"
-                            Style="{StaticResource PdaButtonSecondary}" />
+                <!-- 注册入口 -->
+                <Button Text="没有账号？点此注册"
+                        Command="{Binding GoToRegisterCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="#1565C0"
+                        FontSize="16"
+                        HeightRequest="48"
+                        CornerRadius="8"
+                        BorderColor="#1565C0"
+                        BorderWidth="1.5" />
 
-                </VerticalStackLayout>
-            </Frame>
+            </VerticalStackLayout>
 
             <!-- 版本信息 -->
             <Label Text="v1.0  ·  WMS 系统"
                    FontSize="12"
                    TextColor="#AAAAAA"
                    HorizontalOptions="Center"
-                   Margin="0,24,0,0" />
+                   Margin="0,16,0,0" />
 
         </VerticalStackLayout>
     </ScrollView>

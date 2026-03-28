@@ -13,19 +13,34 @@ public partial class LoginViewModel : ObservableObject
     private readonly IServiceProvider _serviceProvider;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotLoading))]
+    [NotifyPropertyChangedFor(nameof(LoginButtonText))]
+    private bool isLoading = false;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMessage))]
+    [NotifyPropertyChangedFor(nameof(MessageColor))]
+    private string message = "";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessageColor))]
+    private bool isError = false;
+
+    [ObservableProperty]
     private string username = "";
 
     [ObservableProperty]
     private string password = "";
 
-    [ObservableProperty]
-    private string message = "";
+    // --- 计算属性，直接绑定，无需 Converter ---
 
-    [ObservableProperty]
-    private bool isError = false;
+    public bool IsNotLoading => !IsLoading;
 
-    [ObservableProperty]
-    private bool isLoading = false;
+    public string LoginButtonText => IsLoading ? "登录中..." : "登录";
+
+    public bool HasMessage => !string.IsNullOrEmpty(Message);
+
+    public string MessageColor => IsError ? "#C62828" : "#2E7D32";
 
     public LoginViewModel(AuthService auth, IServiceProvider serviceProvider)
     {
@@ -57,10 +72,9 @@ public partial class LoginViewModel : ObservableObject
 
                 if (success)
                 {
-                    // 登录成功，跳转主页（使用 NavigationPage 推入新页面）
                     var mainPage = new ContentPage
                     {
-                        BackgroundColor = Color.FromArgb("#F5F7FA"),
+                        BackgroundColor = Color.FromArgb("#F0F4F8"),
                         Content = new VerticalStackLayout
                         {
                             VerticalOptions = LayoutOptions.Center,
@@ -95,7 +109,6 @@ public partial class LoginViewModel : ObservableObject
                     };
                     NavigationPage.SetHasNavigationBar(mainPage, false);
 
-                    // 获取当前 NavigationPage 并 Push
                     if (Application.Current?.MainPage is NavigationPage navPage)
                     {
                         await navPage.PushAsync(mainPage);
@@ -108,7 +121,6 @@ public partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private async Task GoToRegisterAsync()
     {
-        // 暂时提示，后续可扩展注册页
         Message = "注册功能即将上线，请联系管理员创建账号";
         IsError = false;
         await Task.CompletedTask;
