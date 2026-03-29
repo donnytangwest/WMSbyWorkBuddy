@@ -1,0 +1,229 @@
+@page "/admin/permissions"
+@using WmsCore.Database
+@using WmsWeb.Services
+@inject PermissionHelper PermHelper
+@inject AuthState Auth
+
+<PageTitle>权限点管理 - WMS 系统</PageTitle>
+
+@if (!Auth.Has("menu.admin.permissions"))
+{
+    <div class="alert alert-danger"><i class="bi bi-shield-x me-2"></i>您没有访问此页面的权限。</div>
+    return;
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">权限点管理</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="/dashboard">首页</a></li>
+        <li class="breadcrumb-item">系统管理</li>
+        <li class="breadcrumb-item active">权限点管理</li>
+    </ol>
+
+    @if (!string.IsNullOrEmpty(AlertMsg))
+    {
+        <div class="alert @(AlertSuccess ? "alert-success" : "alert-danger") alert-dismissible py-2">
+            <i class="bi bi-@(AlertSuccess ? "check-circle" : "exclamation-circle") me-2"></i>@AlertMsg
+            <button type="button" class="btn-close" @onclick="() => AlertMsg = string.Empty"></button>
+        </div>
+    }
+
+    <!-- 新增表单 -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">
+            <i class="bi bi-plus-circle me-2"></i>@(EditItem != null ? "编辑权限点" : "新增权限点")
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">权限编码 <span class="text-danger">*</span></label>
+                    <input class="form-control" @bind="FormCode" placeholder="如 btn.inbound.approve"
+                           disabled="@(EditItem != null)" />
+                    <div class="form-text">建议格式：类型.模块.动作</div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">显示名称 <span class="text-danger">*</span></label>
+                    <input class="form-control" @bind="FormName" placeholder="如 审核入库单" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">分组</label>
+                    <input class="form-control" @bind="FormGroup" placeholder="如 入库管理" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">类型</label>
+                    <select class="form-select" @bind="FormType">
+                        <option value="1">菜单</option>
+                        <option value="2">子菜单</option>
+                        <option value="3">功能按钮</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">父级编码</label>
+                    <input class="form-control" @bind="FormParent" placeholder="如 menu.inbound（可空）" />
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">排序</label>
+                    <input type="number" class="form-control" @bind="FormSort" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">描述</label>
+                    <input class="form-control" @bind="FormDesc" placeholder="可选说明" />
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary me-2" @onclick="SavePermission">
+                        <i class="bi bi-check-lg me-1"></i>@(EditItem != null ? "保存修改" : "添加权限点")
+                    </button>
+                    @if (EditItem != null)
+                    {
+                        <button class="btn btn-secondary" @onclick="CancelEdit">取消</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 权限点列表，按分组显示 -->
+    @foreach (var group in PermissionGroups)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light fw-semibold py-2">
+                <i class="bi bi-folder2 me-2"></i>@group.Key
+                <span class="badge bg-secondary ms-2">@group.Value.Count</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:200px;">编码</th>
+                            <th>名称</th>
+                            <th style="width:90px;">类型</th>
+                            <th>父级</th>
+                            <th style="width:60px;">排序</th>
+                            <th>描述</th>
+                            <th style="width:120px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in group.Value)
+                        {
+                            <tr>
+                                <td><code class="text-primary">@p.Code</code></td>
+                                <td>@p.Name</td>
+                                <td>
+                                    <span class="badge @TypeBadge(p.Type)">@TypeLabel(p.Type)</span>
+                                </td>
+                                <td><small class="text-muted">@(string.IsNullOrEmpty(p.ParentCode) ? "-" : p.ParentCode)</small></td>
+                                <td>@p.SortOrder</td>
+                                <td><small class="text-muted">@p.Description</small></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => StartEdit(p)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePermission(p.Code)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<PermissionItem> AllItems = new();
+    private Dictionary<string, List<PermissionItem>> PermissionGroups = new();
+    private PermissionItem? EditItem = null;
+
+    private string FormCode   = "";
+    private string FormName   = "";
+    private string FormGroup  = "";
+    private int    FormType   = 3;
+    private string FormParent = "";
+    private int    FormSort   = 0;
+    private string FormDesc   = "";
+
+    private string AlertMsg     = "";
+    private bool   AlertSuccess = false;
+
+    protected override void OnInitialized() => LoadData();
+
+    private void LoadData()
+    {
+        AllItems = PermHelper.GetAllPermissions();
+        PermissionGroups = AllItems
+            .GroupBy(p => string.IsNullOrEmpty(p.Group) ? "未分组" : p.Group)
+            .OrderBy(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private void StartEdit(PermissionItem p)
+    {
+        EditItem   = p;
+        FormCode   = p.Code;
+        FormName   = p.Name;
+        FormGroup  = p.Group;
+        FormType   = (int)p.Type;
+        FormParent = p.ParentCode;
+        FormSort   = p.SortOrder;
+        FormDesc   = p.Description;
+    }
+
+    private void CancelEdit()
+    {
+        EditItem = null;
+        ResetForm();
+    }
+
+    private void SavePermission()
+    {
+        var item = new PermissionItem
+        {
+            Code        = FormCode.Trim(),
+            Name        = FormName.Trim(),
+            Group       = FormGroup.Trim(),
+            Type        = (PermissionType)FormType,
+            ParentCode  = FormParent.Trim(),
+            SortOrder   = FormSort,
+            Description = FormDesc.Trim(),
+        };
+
+        (bool success, string msg) = EditItem != null
+            ? PermHelper.UpdatePermission(item)
+            : PermHelper.AddPermission(item);
+
+        AlertMsg     = msg;
+        AlertSuccess = success;
+        if (success) { EditItem = null; ResetForm(); LoadData(); }
+    }
+
+    private void DeletePermission(string code)
+    {
+        var (success, msg) = PermHelper.DeletePermission(code);
+        AlertMsg     = msg;
+        AlertSuccess = success;
+        if (success) LoadData();
+    }
+
+    private void ResetForm()
+    {
+        FormCode = FormName = FormGroup = FormParent = FormDesc = "";
+        FormType = 3; FormSort = 0;
+    }
+
+    private static string TypeLabel(PermissionType t) => t switch
+    {
+        PermissionType.Menu    => "菜单",
+        PermissionType.SubMenu => "子菜单",
+        _                      => "按钮",
+    };
+
+    private static string TypeBadge(PermissionType t) => t switch
+    {
+        PermissionType.Menu    => "bg-primary",
+        PermissionType.SubMenu => "bg-info text-dark",
+        _                      => "bg-secondary",
+    };
+}

@@ -3,7 +3,10 @@
 @layout AuthLayout
 @using WmsCore.Database
 @using WmsWeb.Layout
+@using WmsWeb.Services
 @inject DatabaseHelper Db
+@inject PermissionHelper PermHelper
+@inject AuthState Auth
 @inject NavigationManager Navigation
 
 <PageTitle>登录 - WMS 系统</PageTitle>
@@ -81,13 +84,17 @@
         Message = "";
         await Task.Delay(200);
 
-        var (success, msg, _) = Db.Login(Username, Password);
+        var (success, msg, user) = Db.Login(Username, Password);
         IsSuccess = success;
         Message = msg;
         IsLoading = false;
 
-        if (success)
+        if (success && user != null)
         {
+            // 登录成功后加载用户权限（多角色合并）
+            var permissions = PermHelper.GetUserPermissions(user.Id);
+            Auth.Login(user, permissions);
+
             await Task.Delay(600);
             Navigation.NavigateTo("/dashboard");
         }
