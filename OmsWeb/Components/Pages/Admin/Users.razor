@@ -1,0 +1,183 @@
+@page "/admin/users"
+@rendermode InteractiveServer
+@inject OmsDatabaseHelper Db
+@inject OmsPermissionHelper PermHelper
+@inject OmsAuthState Auth
+
+<PageTitle>用户管理 - OMS 系统</PageTitle>
+
+@if (!Auth.Has("menu.admin.users"))
+{
+    <div class="alert alert-danger"><i class="bi bi-shield-x me-2"></i>无权访问</div>
+    return;
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4 fw-bold">用户管理</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="/dashboard">首页</a></li>
+        <li class="breadcrumb-item">系统管理</li>
+        <li class="breadcrumb-item active">用户管理</li>
+    </ol>
+
+    @if (!string.IsNullOrEmpty(AlertMsg))
+    {
+        <div class="alert @(AlertOk ? "alert-success" : "alert-danger") alert-dismissible py-2">
+            @AlertMsg <button class="btn-close" @onclick="() => AlertMsg = string.Empty"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- 用户列表 -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-people me-2"></i>用户列表
+                    <span class="badge bg-secondary ms-2">@UserRoles.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    @foreach (var u in UserRoles)
+                    {
+                        <div class="p-3 border-bottom @(Selected?.UserId == u.UserId ? "bg-primary bg-opacity-10 border-start border-primary border-3" : "")"
+                             style="cursor:pointer;" @onclick="() => SelectUser(u)">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-semibold"><i class="bi bi-person me-1"></i>@u.Username</div>
+                                    <div class="mt-1">
+                                        @if (u.RoleCodes.Count == 0)
+                                        {
+                                            <span class="text-muted small">暂无角色</span>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var rc in u.RoleCodes)
+                                            {
+                                                <span class="badge bg-primary me-1">@GetRoleName(rc)</span>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                                <i class="bi bi-chevron-right text-muted"></i>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- 角色分配 -->
+        <div class="col-lg-7">
+            @if (Selected != null)
+            {
+                <div class="card shadow-sm">
+                    <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-person-check me-2"></i>「@Selected.Username」的角色分配</span>
+                        <button class="btn btn-sm btn-success" @onclick="SaveUserRoles">
+                            <i class="bi bi-check-lg me-1"></i>保存
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            用户的最终权限 = 所有已分配角色的<strong>并集</strong>
+                        </p>
+                        <div class="row g-3">
+                            @foreach (var role in AllRoles)
+                            {
+                                <div class="col-md-6">
+                                    <div class="card border @(SelectedRoles.Contains(role.Code) ? "border-primary" : "")">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                       id="role_@role.Code"
+                                                       checked="@SelectedRoles.Contains(role.Code)"
+                                                       @onchange="e => ToggleRole(role.Code, (bool)e.Value!)" />
+                                                <label class="form-check-label w-100" for="role_@role.Code">
+                                                    <div class="fw-semibold">@role.Name</div>
+                                                    <code class="text-muted small">@role.Code</code>
+                                                    <div class="text-muted small">@role.PermissionCodes.Count 个权限点</div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        @if (SelectedRoles.Count > 0)
+                        {
+                            <div class="mt-4 pt-3 border-top">
+                                <h6 class="text-muted mb-2">合并后的权限（@MergedPerms.Count 个）</h6>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var pc in MergedPerms.OrderBy(x => x))
+                                    {
+                                        <span class="badge bg-light text-dark border">@pc</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm">
+                    <div class="card-body text-center text-muted py-5">
+                        <i class="bi bi-arrow-left fs-3 mb-2 d-block"></i>
+                        请从左侧选择一个用户来分配角色
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<OmsUserRoleInfo> UserRoles     = new();
+    private List<OmsRole>         AllRoles      = new();
+    private OmsUserRoleInfo?      Selected      = null;
+    private HashSet<string>       SelectedRoles = new();
+    private HashSet<string>       MergedPerms   = new();
+    private string AlertMsg = ""; private bool AlertOk = false;
+
+    protected override void OnInitialized() => LoadData();
+
+    private void LoadData()
+    {
+        UserRoles = PermHelper.GetAllUserRoles();
+        AllRoles  = PermHelper.GetAllRoles();
+        if (Selected != null)
+        {
+            var r = UserRoles.FirstOrDefault(u => u.UserId == Selected.UserId);
+            if (r != null) SelectUser(r);
+        }
+    }
+
+    private void SelectUser(OmsUserRoleInfo u)
+    {
+        Selected      = u;
+        SelectedRoles = new HashSet<string>(u.RoleCodes);
+        RefreshMerged();
+    }
+
+    private void ToggleRole(string code, bool on)
+    {
+        if (on) SelectedRoles.Add(code); else SelectedRoles.Remove(code);
+        RefreshMerged();
+    }
+
+    private void RefreshMerged() =>
+        MergedPerms = new HashSet<string>(
+            AllRoles.Where(r => SelectedRoles.Contains(r.Code)).SelectMany(r => r.PermissionCodes));
+
+    private void SaveUserRoles()
+    {
+        if (Selected == null) return;
+        var (ok, msg) = PermHelper.SetUserRoles(Selected.UserId, SelectedRoles);
+        AlertOk = ok; AlertMsg = msg;
+        if (ok) LoadData();
+    }
+
+    private string GetRoleName(string code) =>
+        AllRoles.FirstOrDefault(r => r.Code == code)?.Name ?? code;
+}

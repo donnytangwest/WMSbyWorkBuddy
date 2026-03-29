@@ -1,0 +1,172 @@
+@page "/admin/permissions"
+@rendermode InteractiveServer
+@inject OmsPermissionHelper PermHelper
+@inject OmsAuthState Auth
+
+<PageTitle>权限点管理 - OMS 系统</PageTitle>
+
+@if (!Auth.Has("menu.admin.permissions"))
+{
+    <div class="alert alert-danger"><i class="bi bi-shield-x me-2"></i>无权访问</div>
+    return;
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <div>
+            <h1 class="fw-bold mb-0">权限点管理</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">首页</a></li>
+                <li class="breadcrumb-item">系统管理</li>
+                <li class="breadcrumb-item active">权限点管理</li>
+            </ol>
+        </div>
+        <button class="btn btn-primary" @onclick="() => OpenForm(null)">
+            <i class="bi bi-plus-lg me-1"></i>新增权限点
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(AlertMsg))
+    {
+        <div class="alert @(AlertOk ? "alert-success" : "alert-danger") alert-dismissible py-2">
+            @AlertMsg <button class="btn-close" @onclick="() => AlertMsg = string.Empty"></button>
+        </div>
+    }
+
+    @foreach (var group in Perms.GroupBy(p => p.Group).OrderBy(g => g.Key))
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-folder me-2"></i>@group.Key
+                <span class="badge bg-secondary ms-2">@group.Count()</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>编码</th><th>名称</th><th>类型</th><th>父级</th><th>排序</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in group.OrderBy(x => x.SortOrder))
+                        {
+                            <tr>
+                                <td><code>@p.Code</code></td>
+                                <td>@p.Name</td>
+                                <td>
+                                    <span class="badge @(p.Type == OmsPermissionType.Menu ? "bg-primary" : p.Type == OmsPermissionType.SubMenu ? "bg-info" : "bg-secondary")">
+                                        @(p.Type == OmsPermissionType.Menu ? "菜单" : p.Type == OmsPermissionType.SubMenu ? "子菜单" : "按钮")
+                                    </span>
+                                </td>
+                                <td class="text-muted small">@p.ParentCode</td>
+                                <td>@p.SortOrder</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenForm(p)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePerm(p.Code)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- 编辑弹窗 -->
+@if (ShowForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.4);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(EditMode ? "编辑权限点" : "新增权限点")</h5>
+                    <button class="btn-close" @onclick="() => ShowForm=false"></button>
+                </div>
+                <div class="modal-body row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">编码 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="EditItem.Code" disabled="@EditMode" placeholder="如 btn.orders.approve" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">名称 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="EditItem.Name" placeholder="如 审批订单" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">分组</label>
+                        <input class="form-control" @bind="EditItem.Group" placeholder="如 订单管理" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">类型</label>
+                        <select class="form-select" value="@((int)EditItem.Type)"
+                                @onchange="e => EditItem.Type = (OmsPermissionType)int.Parse(e.Value!.ToString()!)">
+                            <option value="1">菜单</option>
+                            <option value="2">子菜单</option>
+                            <option value="3">功能按钮</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">排序</label>
+                        <input class="form-control" type="number" @bind="EditItem.SortOrder" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">父级编码</label>
+                        <input class="form-control" @bind="EditItem.ParentCode" placeholder="顶级留空" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">描述</label>
+                        <input class="form-control" @bind="EditItem.Description" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => ShowForm=false">取消</button>
+                    <button class="btn btn-primary" @onclick="SavePerm">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<OmsPermissionItem> Perms    = new();
+    private OmsPermissionItem       EditItem = new();
+    private bool ShowForm = false, EditMode = false;
+    private string AlertMsg = ""; private bool AlertOk = false;
+
+    protected override void OnInitialized() => Perms = PermHelper.GetAllPermissions();
+
+    private void OpenForm(OmsPermissionItem? p)
+    {
+        if (p == null)
+        {
+            EditItem = new OmsPermissionItem { Type = OmsPermissionType.Button };
+            EditMode = false;
+        }
+        else
+        {
+            EditItem = new OmsPermissionItem
+            {
+                Code=p.Code, Name=p.Name, Group=p.Group, Type=p.Type,
+                ParentCode=p.ParentCode, SortOrder=p.SortOrder, Description=p.Description,
+            };
+            EditMode = true;
+        }
+        ShowForm = true;
+    }
+
+    private void SavePerm()
+    {
+        var (ok, msg) = EditMode ? PermHelper.UpdatePermission(EditItem) : PermHelper.AddPermission(EditItem);
+        AlertOk = ok; AlertMsg = msg;
+        if (ok) { ShowForm = false; Perms = PermHelper.GetAllPermissions(); }
+    }
+
+    private void DeletePerm(string code)
+    {
+        var (ok, msg) = PermHelper.DeletePermission(code);
+        AlertOk = ok; AlertMsg = msg;
+        if (ok) Perms = PermHelper.GetAllPermissions();
+    }
+}

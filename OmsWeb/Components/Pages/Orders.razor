@@ -1,0 +1,322 @@
+@page "/orders"
+@rendermode InteractiveServer
+@inject OmsDatabaseHelper Db
+@inject OmsAuthState Auth
+
+<PageTitle>订单管理 - OMS 系统</PageTitle>
+
+@if (!Auth.Has("menu.orders"))
+{
+    <div class="alert alert-danger"><i class="bi bi-shield-x me-2"></i>无权访问</div>
+    return;
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <div>
+            <h1 class="fw-bold mb-0">订单管理</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">首页</a></li>
+                <li class="breadcrumb-item active">订单管理</li>
+            </ol>
+        </div>
+        @if (Auth.Has("btn.orders.create"))
+        {
+            <button class="btn btn-primary" @onclick="OpenCreateForm">
+                <i class="bi bi-plus-lg me-1"></i>新增订单
+            </button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(AlertMsg))
+    {
+        <div class="alert @(AlertOk ? "alert-success" : "alert-danger") alert-dismissible py-2">
+            @AlertMsg
+            <button class="btn-close" @onclick="() => AlertMsg = string.Empty"></button>
+        </div>
+    }
+
+    <!-- 订单列表 -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>订单号</th>
+                        <th>状态</th>
+                        <th>明细数</th>
+                        <th>创建人</th>
+                        <th>创建时间</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in OrderList)
+                    {
+                        <tr>
+                            <td><code>@o.OrderNo</code></td>
+                            <td>
+                                <span class="badge bg-@o.StatusBadge">@o.StatusText</span>
+                            </td>
+                            <td>@o.Items.Count 行</td>
+                            <td>@o.CreatedBy</td>
+                            <td class="text-muted small">@o.CreatedAt</td>
+                            <td class="text-muted small">@o.Remark</td>
+                            <td>
+                                <!-- 查看明细 -->
+                                <button class="btn btn-sm btn-outline-secondary me-1"
+                                        @onclick="() => ViewOrder(o)"
+                                        title="查看明细">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <!-- 提交 -->
+                                @if (Auth.Has("btn.orders.submit") && o.Status == OrderStatus.Draft)
+                                {
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick="() => ChangeStatus(o.Id, OrderStatus.Submitted)"
+                                            title="提交">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                }
+                                <!-- 取消 -->
+                                @if (Auth.Has("btn.orders.cancel")
+                                    && (o.Status == OrderStatus.Draft || o.Status == OrderStatus.Submitted))
+                                {
+                                    <button class="btn btn-sm btn-outline-warning me-1"
+                                            @onclick="() => ChangeStatus(o.Id, OrderStatus.Cancelled)"
+                                            title="取消">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                }
+                                <!-- 删除草稿 -->
+                                @if (Auth.Has("btn.orders.delete") && o.Status == OrderStatus.Draft)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => DeleteOrder(o.Id)"
+                                            title="删除">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (OrderList.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">暂无订单</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 新增订单弹窗 -->
+@if (ShowCreateForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.4);">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>新增订单</h5>
+                    <button class="btn-close" @onclick="() => ShowCreateForm = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">备注</label>
+                        <input class="form-control" @bind="NewOrder.Remark" placeholder="订单备注（可选）" />
+                    </div>
+
+                    <!-- 订单明细 -->
+                    <h6 class="fw-semibold mb-2">订单明细</h6>
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>产品 SKU</th>
+                                <th>数量</th>
+                                <th>单价</th>
+                                <th>备注</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < NewOrder.Items.Count; i++)
+                            {
+                                var idx = i;
+                                <tr>
+                                    <td>
+                                        <select class="form-select form-select-sm"
+                                                value="@NewOrder.Items[idx].SkuCode"
+                                                @onchange="e => OnSkuChanged(idx, e.Value?.ToString() ?? string.Empty)">
+                                            <option value="">-- 选择产品 --</option>
+                                            @foreach (var p in ActiveProducts)
+                                            {
+                                                <option value="@p.SkuCode">@p.SkuCode · @p.Name</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td style="width:100px;">
+                                        <input class="form-control form-control-sm" type="number" min="1"
+                                               @bind="NewOrder.Items[idx].Quantity" />
+                                    </td>
+                                    <td style="width:120px;">
+                                        <input class="form-control form-control-sm" type="number" step="0.01"
+                                               @bind="NewOrder.Items[idx].UnitPrice" />
+                                    </td>
+                                    <td>
+                                        <input class="form-control form-control-sm"
+                                               @bind="NewOrder.Items[idx].Remark" />
+                                    </td>
+                                    <td style="width:50px;">
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => NewOrder.Items.RemoveAt(idx)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddOrderItem">
+                        <i class="bi bi-plus me-1"></i>添加行
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => ShowCreateForm = false">取消</button>
+                    <button class="btn btn-outline-primary me-2" @onclick="() => SaveOrder(OrderStatus.Draft)">
+                        <i class="bi bi-save me-1"></i>保存草稿
+                    </button>
+                    <button class="btn btn-primary" @onclick="() => SaveOrder(OrderStatus.Submitted)">
+                        <i class="bi bi-send me-1"></i>提交订单
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- 查看订单明细弹窗 -->
+@if (ViewingOrder != null)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.4);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        订单明细：<code>@ViewingOrder.OrderNo</code>
+                        <span class="badge bg-@ViewingOrder.StatusBadge ms-2">@ViewingOrder.StatusText</span>
+                    </h5>
+                    <button class="btn-close" @onclick="() => ViewingOrder = null"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr><th>SKU</th><th>产品名称</th><th>数量</th><th>单价</th><th>小计</th><th>备注</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in ViewingOrder.Items)
+                            {
+                                <tr>
+                                    <td><code>@item.SkuCode</code></td>
+                                    <td>@item.SkuName</td>
+                                    <td>@item.Quantity</td>
+                                    <td>¥@item.UnitPrice.ToString("N2")</td>
+                                    <td>¥@((item.Quantity * item.UnitPrice).ToString("N2"))</td>
+                                    <td class="text-muted small">@item.Remark</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="4" class="text-end">合计：</td>
+                                <td>¥@ViewingOrder.Items.Sum(i => i.Quantity * i.UnitPrice).ToString("N2")</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    @if (!string.IsNullOrEmpty(ViewingOrder.Remark))
+                    {
+                        <p class="text-muted small mb-0"><strong>备注：</strong>@ViewingOrder.Remark</p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => ViewingOrder = null">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Order>   OrderList      = new();
+    private List<Product> ActiveProducts = new();
+    private Order         NewOrder       = new();
+    private bool          ShowCreateForm = false;
+    private Order?        ViewingOrder   = null;
+    private string        AlertMsg       = "";
+    private bool          AlertOk        = false;
+
+    protected override void OnInitialized() => LoadData();
+
+    private void LoadData()
+    {
+        OrderList      = Db.GetAllOrders();
+        ActiveProducts = Db.GetAllProducts(activeOnly: true);
+    }
+
+    private void OpenCreateForm()
+    {
+        NewOrder = new Order
+        {
+            CreatedBy = Auth.CurrentUser?.Username ?? "",
+            Items     = new List<OrderItem> { new() },
+        };
+        ShowCreateForm = true;
+    }
+
+    private void AddOrderItem() => NewOrder.Items.Add(new OrderItem());
+
+    private void OnSkuChanged(int idx, string skuCode)
+    {
+        NewOrder.Items[idx].SkuCode = skuCode;
+        var product = ActiveProducts.FirstOrDefault(p => p.SkuCode == skuCode);
+        if (product != null)
+            NewOrder.Items[idx].UnitPrice = product.Price;
+    }
+
+    private void SaveOrder(OrderStatus status)
+    {
+        NewOrder.Status = status;
+        NewOrder.Items.RemoveAll(i => string.IsNullOrWhiteSpace(i.SkuCode));
+        if (NewOrder.Items.Count == 0)
+        {
+            AlertOk  = false;
+            AlertMsg = "请至少添加一行订单明细";
+            return;
+        }
+        var (ok, msg, _) = Db.CreateOrder(NewOrder);
+        AlertOk  = ok;
+        AlertMsg = msg;
+        if (ok) { ShowCreateForm = false; LoadData(); }
+    }
+
+    private void ChangeStatus(int orderId, OrderStatus newStatus)
+    {
+        var (ok, msg) = Db.UpdateOrderStatus(orderId, newStatus);
+        AlertOk  = ok;
+        AlertMsg = msg;
+        if (ok) LoadData();
+    }
+
+    private void DeleteOrder(int orderId)
+    {
+        var (ok, msg) = Db.DeleteOrder(orderId);
+        AlertOk  = ok;
+        AlertMsg = msg;
+        if (ok) LoadData();
+    }
+
+    private void ViewOrder(Order o) => ViewingOrder = o;
+}

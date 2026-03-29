@@ -1,0 +1,159 @@
+@page "/inventory"
+@rendermode InteractiveServer
+@inject WmsApiClient WmsApi
+@inject OmsAuthState Auth
+
+<PageTitle>库存查询 - OMS 系统</PageTitle>
+
+@if (!Auth.Has("menu.inventory"))
+{
+    <div class="alert alert-danger"><i class="bi bi-shield-x me-2"></i>无权访问</div>
+    return;
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4 fw-bold">库存查询</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="/dashboard">首页</a></li>
+        <li class="breadcrumb-item active">库存查询</li>
+    </ol>
+
+    <!-- WMS 连接状态 -->
+    <div class="alert @(WmsOnline ? "alert-success" : "alert-warning") py-2 d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-@(WmsOnline ? "wifi" : "wifi-off") me-1"></i>
+        @if (WmsOnline)
+        {
+            <span>WMS 已连接（@WmsUrl）</span>
+        }
+        else
+        {
+            <span>WMS 暂时无法访问（@WmsUrl）—— 以下数据可能不是最新的</span>
+        }
+        <button class="btn btn-sm btn-outline-secondary ms-auto" @onclick="Refresh" disabled="@IsLoading">
+            <i class="bi bi-arrow-clockwise me-1"></i>刷新
+        </button>
+    </div>
+
+    <!-- 搜索栏 -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input class="form-control" @bind="SearchSku" placeholder="输入 SKU 编码过滤..." @oninput="OnSearchInput" />
+                @if (!string.IsNullOrEmpty(SearchSku))
+                {
+                    <button class="btn btn-outline-secondary" @onclick="() => { SearchSku = string.Empty; Refresh(); }">
+                        <i class="bi bi-x"></i>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary me-2"></div>
+            <span>正在查询 WMS 库存...</span>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(ErrorMsg))
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>@ErrorMsg
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold d-flex justify-content-between">
+                <span><i class="bi bi-clipboard-data me-2"></i>库存清单</span>
+                <span class="badge bg-secondary">共 @InventoryList.Count 条</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>SKU 编码</th>
+                            <th>产品名称</th>
+                            <th>库存数量</th>
+                            <th>仓库</th>
+                            <th>库位</th>
+                            <th>更新时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in InventoryList)
+                        {
+                            <tr>
+                                <td><code>@item.SkuCode</code></td>
+                                <td>@item.SkuName</td>
+                                <td>
+                                    <span class="badge @(item.Quantity > 0 ? "bg-success" : "bg-danger")">
+                                        @item.Quantity
+                                    </span>
+                                </td>
+                                <td>@item.WarehouseNo</td>
+                                <td class="text-muted small">@item.Location</td>
+                                <td class="text-muted small">@item.UpdatedAt</td>
+                            </tr>
+                        }
+                        @if (InventoryList.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    @if (WmsOnline) { <span>WMS 库存为空</span> }
+                                    else { <span>WMS 未连接，暂时无法获取库存数据</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<WmsInventoryItem> InventoryList = new();
+    private bool                   IsLoading  = true;
+    private bool                   WmsOnline  = false;
+    private string                 ErrorMsg   = "";
+    private string                 SearchSku  = "";
+    private string                 WmsUrl     = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 获取 WMS 地址（仅用于显示）
+        WmsUrl = WmsApi.GetType().GetField("_baseUrl",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?.GetValue(WmsApi)?.ToString() ?? "未知";
+
+        await Refresh();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        SearchSku = e.Value?.ToString() ?? "";
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        IsLoading = true;
+        ErrorMsg  = "";
+        StateHasChanged();
+
+        WmsOnline = await WmsApi.PingAsync();
+
+        var (ok, msg, items) = await WmsApi.GetInventoryAsync(
+            string.IsNullOrWhiteSpace(SearchSku) ? null : SearchSku.Trim());
+
+        if (ok)
+            InventoryList = items;
+        else
+            ErrorMsg = msg;
+
+        IsLoading = false;
+    }
+}

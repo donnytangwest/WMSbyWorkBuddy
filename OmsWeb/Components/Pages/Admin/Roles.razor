@@ -1,0 +1,210 @@
+@page "/admin/roles"
+@rendermode InteractiveServer
+@inject OmsPermissionHelper PermHelper
+@inject OmsAuthState Auth
+
+<PageTitle>角色管理 - OMS 系统</PageTitle>
+
+@if (!Auth.Has("menu.admin.roles"))
+{
+    <div class="alert alert-danger"><i class="bi bi-shield-x me-2"></i>无权访问</div>
+    return;
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <div>
+            <h1 class="fw-bold mb-0">角色管理</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">首页</a></li>
+                <li class="breadcrumb-item">系统管理</li>
+                <li class="breadcrumb-item active">角色管理</li>
+            </ol>
+        </div>
+        <button class="btn btn-primary" @onclick="OpenNewRoleForm">
+            <i class="bi bi-plus-lg me-1"></i>新建角色
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(AlertMsg))
+    {
+        <div class="alert @(AlertOk ? "alert-success" : "alert-danger") alert-dismissible py-2">
+            @AlertMsg <button class="btn-close" @onclick="() => AlertMsg = string.Empty"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- 角色列表 -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-person-badge me-2"></i>角色列表
+                    <span class="badge bg-secondary ms-2">@RoleList.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    @foreach (var r in RoleList)
+                    {
+                        <div class="p-3 border-bottom d-flex justify-content-between align-items-center
+                                    @(SelectedRole?.Code == r.Code ? "bg-primary bg-opacity-10 border-start border-primary border-3" : "")"
+                             style="cursor:pointer;" @onclick="() => SelectRole(r)">
+                            <div>
+                                <div class="fw-semibold">@r.Name</div>
+                                <code class="text-muted small">@r.Code</code>
+                                <div class="text-muted small">@r.PermissionCodes.Count 个权限点</div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="() => DeleteRole(r.Code)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- 权限分配 -->
+        <div class="col-lg-8">
+            @if (SelectedRole != null)
+            {
+                <div class="card shadow-sm">
+                    <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                        <span>「@SelectedRole.Name」的权限配置</span>
+                        <button class="btn btn-sm btn-success" @onclick="SaveRolePerms">
+                            <i class="bi bi-check-lg me-1"></i>保存
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var group in AllPerms.GroupBy(p => p.Group).OrderBy(g => g.Key))
+                        {
+                            <div class="mb-3">
+                                <div class="fw-semibold text-muted small mb-2 border-bottom pb-1">@group.Key</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var perm in group.OrderBy(p => p.SortOrder))
+                                    {
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   id="p_@perm.Code"
+                                                   checked="@SelectedPerms.Contains(perm.Code)"
+                                                   @onchange="e => TogglePerm(perm.Code, (bool)e.Value!)" />
+                                            <label class="form-check-label small" for="p_@perm.Code">
+                                                @perm.Name
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow-sm">
+                    <div class="card-body text-center text-muted py-5">
+                        <i class="bi bi-arrow-left fs-3 mb-2 d-block"></i>
+                        请从左侧选择一个角色来配置权限
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- 新建角色弹窗 -->
+@if (ShowNewForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.4);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新建角色</h5>
+                    <button class="btn-close" @onclick="() => ShowNewForm=false"></button>
+                </div>
+                <div class="modal-body row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">角色编码 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="NewRoleCode" placeholder="如 manager" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">角色名称 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="NewRoleName" placeholder="如 订单经理" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">描述</label>
+                        <input class="form-control" @bind="NewRoleDesc" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => ShowNewForm=false">取消</button>
+                    <button class="btn btn-primary" @onclick="AddRole">创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<OmsRole>            RoleList     = new();
+    private List<OmsPermissionItem>  AllPerms     = new();
+    private OmsRole?                 SelectedRole = null;
+    private HashSet<string>          SelectedPerms = new();
+    private bool                     ShowNewForm  = false;
+    private string                   NewRoleCode = "", NewRoleName = "", NewRoleDesc = "";
+    private string AlertMsg = ""; private bool AlertOk = false;
+
+    protected override void OnInitialized() => LoadData();
+
+    private void OpenNewRoleForm()
+    {
+        NewRoleCode = "";
+        NewRoleName = "";
+        NewRoleDesc = "";
+        ShowNewForm = true;
+    }
+
+    private void LoadData()
+    {
+        RoleList = PermHelper.GetAllRoles();
+        AllPerms = PermHelper.GetAllPermissions();
+        if (SelectedRole != null)
+        {
+            var r = RoleList.FirstOrDefault(x => x.Code == SelectedRole.Code);
+            if (r != null) SelectRole(r);
+        }
+    }
+
+    private void SelectRole(OmsRole r)
+    {
+        SelectedRole  = r;
+        SelectedPerms = new HashSet<string>(r.PermissionCodes);
+    }
+
+    private void TogglePerm(string code, bool on)
+    {
+        if (on) SelectedPerms.Add(code); else SelectedPerms.Remove(code);
+    }
+
+    private void SaveRolePerms()
+    {
+        if (SelectedRole == null) return;
+        var (ok, msg) = PermHelper.SetRolePermissions(SelectedRole.Code, SelectedPerms);
+        AlertOk = ok; AlertMsg = msg;
+        if (ok) LoadData();
+    }
+
+    private void AddRole()
+    {
+        var (ok, msg) = PermHelper.AddRole(new OmsRole { Code=NewRoleCode, Name=NewRoleName, Description=NewRoleDesc });
+        AlertOk = ok; AlertMsg = msg;
+        if (ok) { ShowNewForm = false; LoadData(); }
+    }
+
+    private void DeleteRole(string code)
+    {
+        if (code == "admin") { AlertOk=false; AlertMsg="超级管理员角色不可删除"; return; }
+        var (ok, msg) = PermHelper.DeleteRole(code);
+        AlertOk = ok; AlertMsg = msg;
+        if (ok) { SelectedRole=null; LoadData(); }
+    }
+}

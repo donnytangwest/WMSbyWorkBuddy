@@ -1,0 +1,166 @@
+﻿@inherits LayoutComponentBase
+@inject OmsAuthState Auth
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="d-flex" style="min-height:100vh;">
+
+    <!-- 侧边栏 -->
+    <nav class="d-flex flex-column p-3 text-white"
+         style="width:220px; flex-shrink:0; background:#1a3a5c;">
+
+        <div class="mb-4 mt-2">
+            <div class="fw-bold fs-5">
+                <i class="bi bi-cart-check me-2"></i>OMS 系统
+            </div>
+            <div style="font-size:0.75rem; opacity:0.6;">订单管理平台</div>
+        </div>
+
+        <ul class="nav flex-column gap-1 flex-grow-1">
+
+            @* 仪表盘 *@
+            <li class="nav-item">
+                <NavLink class="nav-link text-white-50 px-2 py-1 rounded" href="/dashboard"
+                         ActiveClass="bg-white bg-opacity-25 text-white"
+                         Match="NavLinkMatch.All">
+                    <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                </NavLink>
+            </li>
+
+            @* 产品管理 *@
+            @if (Auth.Has("menu.products"))
+            {
+                <li class="nav-item">
+                    <NavLink class="nav-link text-white-50 px-2 py-1 rounded" href="/products"
+                             ActiveClass="bg-white bg-opacity-25 text-white">
+                        <i class="bi bi-box-seam me-2"></i>产品管理
+                    </NavLink>
+                </li>
+            }
+
+            @* 订单管理 *@
+            @if (Auth.Has("menu.orders"))
+            {
+                <li class="nav-item">
+                    <NavLink class="nav-link text-white-50 px-2 py-1 rounded" href="/orders"
+                             ActiveClass="bg-white bg-opacity-25 text-white">
+                        <i class="bi bi-receipt me-2"></i>订单管理
+                    </NavLink>
+                </li>
+            }
+
+            @* 库存查询（调用 WMS API）*@
+            @if (Auth.Has("menu.inventory"))
+            {
+                <li class="nav-item">
+                    <NavLink class="nav-link text-white-50 px-2 py-1 rounded" href="/inventory"
+                             ActiveClass="bg-white bg-opacity-25 text-white">
+                        <i class="bi bi-clipboard-data me-2"></i>库存查询
+                    </NavLink>
+                </li>
+            }
+
+            @* 系统管理 *@
+            @if (Auth.Has("menu.admin"))
+            {
+                <li class="nav-item mt-3">
+                    <div class="px-2 mb-1"
+                         style="font-size:0.7rem;opacity:0.4;letter-spacing:1px;">系统管理</div>
+                </li>
+
+                @if (Auth.Has("menu.admin.permissions"))
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link text-white-50 px-2 py-1 rounded" href="/admin/permissions"
+                                 ActiveClass="bg-white bg-opacity-25 text-white">
+                            <i class="bi bi-shield-check me-2"></i>权限点管理
+                        </NavLink>
+                    </li>
+                }
+
+                @if (Auth.Has("menu.admin.roles"))
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link text-white-50 px-2 py-1 rounded" href="/admin/roles"
+                                 ActiveClass="bg-white bg-opacity-25 text-white">
+                            <i class="bi bi-person-badge me-2"></i>角色管理
+                        </NavLink>
+                    </li>
+                }
+
+                @if (Auth.Has("menu.admin.users"))
+                {
+                    <li class="nav-item">
+                        <NavLink class="nav-link text-white-50 px-2 py-1 rounded" href="/admin/users"
+                                 ActiveClass="bg-white bg-opacity-25 text-white">
+                            <i class="bi bi-people me-2"></i>用户管理
+                        </NavLink>
+                    </li>
+                }
+            }
+        </ul>
+
+        <!-- 底部用户信息 -->
+        <div class="pt-3 border-top border-white border-opacity-25">
+            @if (Auth.IsLoggedIn)
+            {
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-person-circle fs-5"></i>
+                    <span style="font-size:0.85rem;">@Auth.CurrentUser!.Username</span>
+                </div>
+            }
+            <button class="btn btn-sm btn-outline-light w-100" @onclick="HandleLogout">
+                <i class="bi bi-box-arrow-right me-1"></i>退出登录
+            </button>
+            <div class="text-center mt-2" style="font-size:0.65rem;opacity:0.35;">
+                v1.0 · OMS · Blazor Server
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="flex-grow-1 d-flex flex-column">
+        <!-- 顶栏 -->
+        <header class="bg-white border-bottom px-4 py-2 d-flex align-items-center justify-content-between"
+                style="height:56px;">
+            <span class="text-muted fw-semibold">
+                <i class="bi bi-cart-check me-2 text-primary"></i>OMS 订单管理系统
+            </span>
+            @if (Auth.IsLoggedIn)
+            {
+                <span class="badge bg-primary">
+                    <i class="bi bi-person me-1"></i>@Auth.CurrentUser!.Username
+                </span>
+            }
+        </header>
+
+        <!-- 页面内容 -->
+        <main class="flex-grow-1 p-4 bg-light">
+            @Body
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    <span>出现了意外错误，请刷新页面。</span>
+    <a href="." class="reload">刷新</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Auth.OnChanged += StateHasChanged;
+    }
+
+    private void HandleLogout()
+    {
+        Auth.Logout();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        Auth.OnChanged -= StateHasChanged;
+    }
+}

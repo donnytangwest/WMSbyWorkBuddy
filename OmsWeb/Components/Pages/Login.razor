@@ -1,0 +1,97 @@
+@page "/login"
+@page "/"
+@layout EmptyLayout
+@rendermode InteractiveServer
+@inject OmsDatabaseHelper Db
+@inject OmsPermissionHelper PermHelper
+@inject OmsAuthState Auth
+@inject NavigationManager Navigation
+
+<PageTitle>登录 - OMS 系统</PageTitle>
+
+<div class="min-vh-100 d-flex align-items-center justify-content-center"
+     style="background:linear-gradient(135deg,#1a3a5c 0%,#2563a8 100%);">
+    <div style="width:100%;max-width:420px;padding:0 16px;">
+        <div class="card shadow border-0">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-3 mb-3"
+                         style="width:64px;height:64px;background:#1a3a5c;">
+                        <i class="bi bi-cart-check text-white fs-2"></i>
+                    </div>
+                    <h4 class="fw-bold mb-1">OMS 订单管理系统</h4>
+                    <p class="text-muted small">请登录您的账号</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">用户名</label>
+                    <input type="text" class="form-control form-control-lg" @bind="Username"
+                           placeholder="请输入用户名" @onkeydown="OnKeyDown" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">密码</label>
+                    <input type="password" class="form-control form-control-lg" @bind="Password"
+                           placeholder="请输入密码" @onkeydown="OnKeyDown" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    <div class="alert @(IsSuccess ? "alert-success" : "alert-danger") py-2 mb-3">
+                        <i class="bi bi-@(IsSuccess ? "check-circle" : "exclamation-circle") me-2"></i>@Message
+                    </div>
+                }
+
+                <div class="d-grid mt-4">
+                    <button class="btn btn-lg text-white fw-semibold" @onclick="HandleLogin"
+                            style="background:#1a3a5c;" disabled="@IsLoading">
+                        @if (IsLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        登 录
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string Username  = "";
+    private string Password  = "";
+    private string Message   = "";
+    private bool   IsSuccess = false;
+    private bool   IsLoading = false;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await HandleLogin();
+    }
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+        {
+            Message   = "用户名和密码不能为空";
+            IsSuccess = false;
+            return;
+        }
+
+        IsLoading = true;
+        Message   = "";
+        await Task.Delay(200);
+
+        var (success, msg, user) = Db.Login(Username, Password);
+        IsSuccess = success;
+        Message   = msg;
+        IsLoading = false;
+
+        if (success && user != null)
+        {
+            var permissions = PermHelper.GetUserPermissions(user.Id);
+            Auth.Login(user, permissions);
+            await Task.Delay(400);
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+}

@@ -1,0 +1,218 @@
+@page "/products"
+@rendermode InteractiveServer
+@inject OmsDatabaseHelper Db
+@inject OmsAuthState Auth
+
+<PageTitle>产品管理 - OMS 系统</PageTitle>
+
+@if (!Auth.Has("menu.products"))
+{
+    <div class="alert alert-danger"><i class="bi bi-shield-x me-2"></i>无权访问</div>
+    return;
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <div>
+            <h1 class="fw-bold mb-0">产品管理</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">首页</a></li>
+                <li class="breadcrumb-item active">产品管理</li>
+            </ol>
+        </div>
+        @if (Auth.Has("btn.products.create"))
+        {
+            <button class="btn btn-primary" @onclick="() => OpenForm(null)">
+                <i class="bi bi-plus-lg me-1"></i>新增产品
+            </button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(AlertMsg))
+    {
+        <div class="alert @(AlertOk ? "alert-success" : "alert-danger") alert-dismissible py-2">
+            @AlertMsg
+            <button type="button" class="btn-close" @onclick="() => AlertMsg = string.Empty"></button>
+        </div>
+    }
+
+    <!-- 产品表格 -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>SKU</th>
+                        <th>名称</th>
+                        <th>分类</th>
+                        <th>单位</th>
+                        <th>单价</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        @if (Auth.HasAny("btn.products.edit","btn.products.delete"))
+                        {
+                            <th>操作</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in ProductList)
+                    {
+                        <tr>
+                            <td><code>@p.SkuCode</code></td>
+                            <td>@p.Name</td>
+                            <td><span class="badge bg-light text-dark border">@p.Category</span></td>
+                            <td>@p.Unit</td>
+                            <td>¥@p.Price.ToString("N2")</td>
+                            <td>
+                                @if (p.IsActive)
+                                {
+                                    <span class="badge bg-success">启用</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">停用</span>
+                                }
+                            </td>
+                            <td class="text-muted small">@p.CreatedAt</td>
+                            @if (Auth.HasAny("btn.products.edit","btn.products.delete"))
+                            {
+                                <td>
+                                    @if (Auth.Has("btn.products.edit"))
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() => OpenForm(p)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    }
+                                    @if (Auth.Has("btn.products.delete"))
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => DeleteProduct(p.SkuCode)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                    @if (ProductList.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">暂无产品，点击「新增产品」添加</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 新增/编辑弹窗 -->
+@if (ShowForm)
+{
+    <div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.4);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(EditProduct.SkuCode == "" ? "新增产品" : $"编辑：{EditProduct.SkuCode}")</h5>
+                    <button class="btn-close" @onclick="CloseForm"></button>
+                </div>
+                <div class="modal-body row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">SKU 编码 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="EditProduct.SkuCode" placeholder="如 SKU-001"
+                               disabled="@(EditMode)" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">产品名称 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="EditProduct.Name" placeholder="产品显示名称" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">分类</label>
+                        <input class="form-control" @bind="EditProduct.Category" placeholder="如 电子、服装" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">单位</label>
+                        <input class="form-control" @bind="EditProduct.Unit" placeholder="件/箱/套" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">单价（¥）</label>
+                        <input class="form-control" type="number" step="0.01" @bind="EditProduct.Price" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">描述</label>
+                        <textarea class="form-control" rows="2" @bind="EditProduct.Description"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   checked="@EditProduct.IsActive"
+                                   @onchange="e => EditProduct.IsActive = (bool)e.Value!" />
+                            <label class="form-check-label">启用产品</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseForm">取消</button>
+                    <button class="btn btn-primary" @onclick="SaveProduct">
+                        <i class="bi bi-check-lg me-1"></i>保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Product> ProductList = new();
+    private Product       EditProduct = new();
+    private bool          ShowForm    = false;
+    private bool          EditMode    = false;
+    private string        AlertMsg    = "";
+    private bool          AlertOk     = false;
+
+    protected override void OnInitialized() => LoadData();
+
+    private void LoadData()
+    {
+        ProductList = Db.GetAllProducts();
+    }
+
+    private void OpenForm(Product? p)
+    {
+        if (p == null)
+        {
+            EditProduct = new Product { IsActive = true };
+            EditMode    = false;
+        }
+        else
+        {
+            EditProduct = new Product
+            {
+                SkuCode = p.SkuCode, Name = p.Name, Category = p.Category,
+                Unit = p.Unit, Price = p.Price, Description = p.Description, IsActive = p.IsActive,
+            };
+            EditMode = true;
+        }
+        ShowForm = true;
+    }
+
+    private void CloseForm() => ShowForm = false;
+
+    private void SaveProduct()
+    {
+        var (ok, msg) = EditMode ? Db.UpdateProduct(EditProduct) : Db.AddProduct(EditProduct);
+        AlertOk  = ok;
+        AlertMsg = msg;
+        if (ok) { CloseForm(); LoadData(); }
+    }
+
+    private void DeleteProduct(string skuCode)
+    {
+        var (ok, msg) = Db.DeleteProduct(skuCode);
+        AlertOk  = ok;
+        AlertMsg = msg;
+        if (ok) LoadData();
+    }
+}
